@@ -1,4 +1,7 @@
-class Booster {
+/**
+ * 加速器，用以测量加速动能，可获得加速度
+ */
+class Accelerometer {
   constructor() {
     this.points = []
   }
@@ -7,7 +10,7 @@ class Booster {
    * 记录物体运动轨迹
    * @param {*} distance 加速之后达到多少距离
    */
-  move(distance) {
+  push(distance) {
     this.points.push({
       distance,
       time: Date.now(),
@@ -17,7 +20,7 @@ class Booster {
   /**
    * 获得加速度
    */
-  accelerator() {
+  acceleration() {
     const points = this.points
     const len = points.length
 
@@ -25,64 +28,97 @@ class Booster {
     const speed$ = (points[len - 1].distance - points[len - 2].distance) / (points[len - 1].time - points[len - 2].time)
     const time = points[len - 1].time - points[0].time
 
-    const accelerator = (speed$ - speed0) / time
-    return accelerator
+    const acceleration = (speed$ - speed0) / time
+    return acceleration
   }
 }
 
-class Accelerometer extends Booster {
+/**
+ * 助推器，获得加速度之后，可测量任意时间点上的速度和距离
+ */
+class Booster extends Accelerometer {
   // 根据时间获取加速后速度
   speed(time) {
-    const accelerator = this.accelerator()
-    const speed = accelerator * time
+    const acceleration = this.acceleration()
+    const speed = acceleration * time
     return speed
   }
   // 根据当前时间获取当前速度
   distance(time) {
-    const accelerator = this.accelerator()
-    const distance = accelerator * time * time / 2
+    const acceleration = this.acceleration()
+    const distance = acceleration * time * time / 2
     return distance
   }
 }
 
-class Damper extends Booster {
+/**
+ * 带摩擦的惯性运动
+ */
+class Inertia extends Accelerometer {
   /**
-   * @param {*} damping 一个 [0, 1] 的数字
+   * @param {*} u
    */
-  constructor(damping) {
-    super()
-    this.damping = damping
+  constructor(u) {
+    this.u = u
   }
-  // 根据时间获取阻尼后速度
+  /**
+   * 摩擦减速度
+   */
+  deceleration() {
+    const points = this.points
+    const len = points.length
+
+    const speed0 = (points[1].distance - points[0].distance) / (points[1].time - points[0].time)
+    const speed$ = (points[len - 1].distance - points[len - 2].distance) / (points[len - 1].time - points[len - 2].time)
+    const time$ = points[len - 1].time
+    const time0 = points[0].time
+
+    const acceleration = (speed$ - speed0) / (time$ - time0)
+    const { u } = this
+
+    const deceleration = u * acceleration / (1 - u)
+    return deceleration
+  }
   speed(time) {
-    // const points = this.points
-    // const len = points.length
+    const points = this.points
+    const len = points.length
+    const time$ = points[len - 1].time
+    const acceleration = this.acceleration()
 
-    // const speed0 = (points[1].distance - points[0].distance) / (points[1].time - points[0].time)
-    // const speed$ = (points[len - 1].distance - points[len - 2].distance) / (points[len - 1].time - points[len - 2].time)
-    // const time0 = points[len - 1].time
-    // const time$ = points[0].time
-
-    // if (time <= time0) {
-    //   return 0
-    // }
-
-    // if (time > time0 && time <= time$) {
-    //   const factor = (time - time0) / (time$ - time0)
-    //   const speed = speed0 + (speed$ - speed0) * factor
-    //   return speed
-    // }
-
-    // if (time > time$) {
-    //   const u = this.damping
-    //   const range = time - time$
-    //   const accelerator = (speed$ - speed0) / (time$ - time0) * (1 - u * range) // 阻尼系数使加速度变小，且随着时间的推移这个系数带来的影响越来越大
-    //   const speed = speed$ + accelerator * range
-    //   return speed
-    // }
+    if (time <= time$) {
+      const speed = acceleration * time
+      return speed
+    }
+    else {
+      const deceleration = this.deceleration()
+      const speed$ = acceleration * time$
+      const speed = speed$ - deceleration * (time - time$)
+      return speed
+    }
   }
-  // 根据当前时间获取当前速度
   distance(time) {
+    const points = this.points
+    const len = points.length
+    const time$ = points[len - 1].time
+    const acceleration = this.acceleration()
 
+    if (time <= time$) {
+      const distance = acceleration * time * time / 2
+      return distance
+    }
+    else {
+      const pass = acceleration * time$ * time$ / 2
+      const t = time$ - time
+      const speed$ = acceleration * time$
+      const deceleration = this.deceleration()
+      const s = speed$ * t - deceleration * time * time / 2
+      const distance = pass + s
+      return distance
+    }
   }
 }
+
+/**
+ * 阻尼振动
+ */
+class Dumper extends Accelerometer {}
