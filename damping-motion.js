@@ -34,9 +34,9 @@ class Accelerometer {
 }
 
 /**
- * 助推器，获得加速度之后，可测量任意时间点上的速度和距离
+ * 匀加速直线运动
  */
-class Booster extends Accelerometer {
+class AcceleratedMotion extends Accelerometer {
   // 根据时间获取加速后速度
   speed(time) {
     const acceleration = this.acceleration()
@@ -52,9 +52,9 @@ class Booster extends Accelerometer {
 }
 
 /**
- * 带摩擦的惯性运动
+ * 匀加速直线运动停止加速后的带摩擦的惯性运动
  */
-class Inertia extends Accelerometer {
+class InertiaFrictionMotion extends Accelerometer {
   /**
    * @param {*} u
    */
@@ -119,6 +119,57 @@ class Inertia extends Accelerometer {
 }
 
 /**
+ * 简谐振动
+ */
+class SimpleHarmonicMotion {
+  /**
+   * @param {*} v 起始速度
+   * @param {*} k 弹性系数
+   */
+  constructor(v, k) {
+    this.v = v
+    this.k = k
+  }
+
+  amplitude() {
+    // F = ma
+    // F = -cv
+    // ma = cv
+    // a = (c/m)v = kv (k = c/m)
+    const { v, k } = this
+    const a = k * v
+    const t = v / a
+    const s = a * t / 2
+    return s
+  }
+
+  speed(time) {
+    const { v, k } = this
+    const a = k * v
+    const t = v / a
+
+    const get = x => Math.sin(x / Math.PI * 10 / t * 2)
+    const speed =  get(time)
+    return speed
+  }
+
+  distance(time) {
+    const { v, k } = this
+    const a = k * v
+    const t = v / a
+    const s = this.amplitude()
+
+    const get = x => Math.sin(x / Math.PI * 10 / t * 2) * s
+    const distance =  get(time)
+    return distance
+  }
+}
+
+/**
  * 阻尼振动
  */
-class Dumper extends Accelerometer {}
+class Dumper extends Accelerometer {
+  constructor(damping) {
+    this.damping = damping
+  }
+}
